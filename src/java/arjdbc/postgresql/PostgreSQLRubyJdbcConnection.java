@@ -66,6 +66,8 @@ import org.postgresql.geometric.PGpoint;
 import org.postgresql.geometric.PGpolygon;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
+import org.postgresql.util.PSQLWarning;
+import org.postgresql.util.ServerErrorMessage;
 
 /**
  *
@@ -265,6 +267,27 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     protected PostgreSQLResult mapExecuteResult(final ThreadContext context, final Connection connection,
                                                 final ResultSet resultSet) throws SQLException {
         return PostgreSQLResult.newResult(context, resultClass, this, resultSet);
+    }
+
+    @Override
+    protected boolean collectsWarnings() {
+        return true;
+    }
+
+    /**
+     * Extracts the PostgreSQL severity (e.g. "WARNING", "NOTICE") from a server
+     * warning so AR's <code>db_warnings_action</code> can filter by level.
+     */
+    @Override
+    protected IRubyObject warningLevel(final ThreadContext context, final java.sql.SQLWarning warning) {
+        if (warning instanceof PSQLWarning) {
+            final ServerErrorMessage serverError = ((PSQLWarning) warning).getServerErrorMessage();
+            if (serverError != null) {
+                final String severity = serverError.getSeverity();
+                if (severity != null) return context.runtime.newString(severity);
+            }
+        }
+        return context.nil;
     }
 
     /**

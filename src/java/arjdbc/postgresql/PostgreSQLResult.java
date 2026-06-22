@@ -193,7 +193,12 @@ public class PostgreSQLResult extends JdbcResult {
             }
         }
 
-        return super.toARResult(context);
+        final IRubyObject arResult = super.toARResult(context);
+        // Expose the affected/returned row count on ActiveRecord::Result#affected_rows
+        // (added in Rails 8.1). Set the ivar directly to avoid keyword-arg plumbing
+        // through the Java -> Ruby constructor call.
+        arResult.getInstanceVariables().setInstanceVariable("@affected_rows", length(context));
+        return arResult;
     }
 
     /**
@@ -258,12 +263,12 @@ public class PostgreSQLResult extends JdbcResult {
         return resultHash;
     }
 
-    // Note: this is # of commands (insert/update/selects performed) and not number of rows.  In practice,
-    // so far users always just check this as to when it is 0 which ends up being the same as an update/insert
-    // where no rows were affected...so wrong value but the important value will be the same (I do not see
-    // how jdbc can do this).
+    // pg's PG::Result#cmd_tuples reports the number of rows affected by the command
+    // (for SELECT, the number of rows returned). The JDBC driver doesn't expose
+    // libpq's command-tuple count directly, but for the result sets we build it is
+    // equivalent to the number of rows we hold.
     @PG @JRubyMethod(name = {"cmdtuples", "cmd_tuples"})
     public IRubyObject cmdtuples(ThreadContext context) {
-        return values.isEmpty() ? context.runtime.newFixnum(0) : aref(context, context.runtime.newFixnum(0));
+        return length(context);
     }
 }

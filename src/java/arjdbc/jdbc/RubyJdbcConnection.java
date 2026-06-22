@@ -41,6 +41,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.SQLWarning;
 import java.sql.SQLXML;
 import java.sql.Statement;
 import java.sql.Date;
@@ -141,6 +142,10 @@ public class RubyJdbcConnection extends RubyObject {
     private boolean jndi; // final once set on initialize
     private boolean configureConnection = true; // final once initialized
     private int fetchSize = 0; // 0 = JDBC default
+
+    // SQL warnings collected from recent statement executions; drained via #take_warnings.
+    // Each entry is a [message, sqlstate, level] Ruby array.
+    private final List<IRubyObject> warnings = new ArrayList<>(0);
 
     protected RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
@@ -822,6 +827,8 @@ public class RubyJdbcConnection extends RubyObject {
                     updateCount = statement.getUpdateCount();
                 }
 
+                collectWarnings(context, statement);
+
                 return result;
 
             } catch (final SQLException e) {
@@ -831,6 +838,76 @@ public class RubyJdbcConnection extends RubyObject {
                 close(statement);
             }
         });
+    }
+
+    /**
+     * Collects any SQL warnings from the given statement into the per-connection
+     * buffer, then clears them from the statement. Best-effort: surfacing warnings
+     * must never break query execution.
+     * @param context current thread context
+     * @param statement the statement just executed
+     */
+    protected void collectWarnings(final ThreadContext context, final Statement statement) {
+        if (!collectsWarnings()) return;
+        try {
+            SQLWarning warning = statement.getWarnings();
+            if (warning == null) return;
+            while (warning != null) {
+                warnings.add(warningToRuby(context, warning));
+                warning = warning.getNextWarning();
+            }
+            statement.clearWarnings();
+        } catch (SQLException e) {
+            // ignore - warnings are advisory and must not fail the query
+        }
+    }
+
+    private IRubyObject warningToRuby(final ThreadContext context, final SQLWarning warning) {
+        final Ruby runtime = context.runtime;
+        final String message = warning.getMessage();
+        final String state = warning.getSQLState();
+        final IRubyObject[] parts = new IRubyObject[] {
+            message == null ? context.nil : runtime.newString(message),
+            state == null ? context.nil : runtime.newString(state),
+            warningLevel(context, warning)
+        };
+        return RubyArray.newArray(runtime, parts);
+    }
+
+    /**
+     * Whether this connection should gather SQL warnings after each execution.
+     * Off by default to avoid the per-statement <code>getWarnings()</code> cost;
+     * adapters that surface DB warnings (e.g. PostgreSQL) override this.
+     * @return true to collect warnings
+     */
+    protected boolean collectsWarnings() {
+        return false;
+    }
+
+    /**
+     * The severity/level of a warning (e.g. "WARNING", "NOTICE"). The standard
+     * JDBC API does not expose this, so the base implementation returns nil;
+     * adapters with driver-specific support override this.
+     * @param context current thread context
+     * @param warning the warning to inspect
+     * @return the level as a Ruby string, or nil
+     */
+    protected IRubyObject warningLevel(final ThreadContext context, final SQLWarning warning) {
+        return context.nil;
+    }
+
+    /**
+     * Returns the SQL warnings accumulated since the previous call and clears the
+     * buffer. Each entry is a <code>[message, sqlstate, level]</code> array.
+     * @param context current thread context
+     * @return a Ruby array of warning triples (possibly empty)
+     */
+    @JRubyMethod(name = "take_warnings")
+    public IRubyObject take_warnings(final ThreadContext context) {
+        if (warnings.isEmpty()) return newArray(context);
+        final RubyArray result = context.runtime.newArray(warnings);
+        warnings.clear();
+        return result;
     }
 
     protected Statement createStatement(final ThreadContext context, final Connection connection)
@@ -905,6 +982,7 @@ public class RubyJdbcConnection extends RubyObject {
                     statement.executeUpdate(query, createStatementPk(pk));
                 }
 
+                collectWarnings(context, statement);
                 return mapGeneratedKeys(context, connection, statement);
             } catch (final SQLException e) {
                 debugErrorSQL(context, query);
@@ -945,6 +1023,7 @@ public class RubyJdbcConnection extends RubyObject {
 
                 setStatementParameters(context, connection, statement, (RubyArray) binds);
                 statement.executeUpdate();
+                collectWarnings(context, statement);
                 return mapGeneratedKeys(context, connection, statement);
             } catch (final SQLException e) {
                 debugErrorSQL(context, query);
@@ -978,6 +1057,7 @@ public class RubyJdbcConnection extends RubyObject {
                 statement = createStatement(context, connection);
 
                 final int rowCount = statement.executeUpdate(query);
+                collectWarnings(context, statement);
                 return context.runtime.newFixnum(rowCount);
             } catch (final SQLException e) {
                 debugErrorSQL(context, query);
@@ -1006,6 +1086,7 @@ public class RubyJdbcConnection extends RubyObject {
                 statement = connection.prepareStatement(query);
                 setStatementParameters(context, connection, statement, (RubyArray) binds);
                 final int rowCount = statement.executeUpdate();
+                collectWarnings(context, statement);
                 return context.runtime.newFixnum(rowCount);
             } catch (final SQLException e) {
                 debugErrorSQL(context, query);
@@ -1119,7 +1200,9 @@ public class RubyJdbcConnection extends RubyObject {
                 statement = createStatement(context, connection);
 
                 // At least until AR 5.1 #exec_query still gets called for things that don't return results in some cases :(
-                if (statement.execute(query)) {
+                final boolean hasResultSet = statement.execute(query);
+                collectWarnings(context, statement);
+                if (hasResultSet) {
                     return mapQueryResult(context, connection, statement.getResultSet());
                 }
 
@@ -1207,7 +1290,9 @@ public class RubyJdbcConnection extends RubyObject {
 
                 setStatementParameters(context, connection, statement, (RubyArray) binds);
 
-                if (statement.execute()) {
+                final boolean hasResultSet = statement.execute();
+                collectWarnings(context, statement);
+                if (hasResultSet) {
                     ResultSet resultSet = statement.getResultSet();
                     IRubyObject results = mapQueryResult(context, connection, resultSet);
                     resultSet.close();

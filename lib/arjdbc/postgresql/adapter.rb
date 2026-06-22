@@ -839,6 +839,29 @@ module ArJdbc
     end
     private :exception_class_for_message
 
+    # Drains the SQL warnings collected by the JDBC layer for the last statement
+    # and dispatches each via +ActiveRecord.db_warnings_action+. Called from the
+    # JDBC query paths (ArJdbc::Abstract::DatabaseStatements), which bypass the
+    # abstract adapter's #raw_execute-based warning handling. Always drains so the
+    # Java-side buffer can't grow even when warnings are configured to be ignored.
+    def handle_warnings(sql)
+      warnings = @raw_connection.take_warnings
+      return if warnings.empty? || ActiveRecord.db_warnings_action.nil?
+
+      warnings.each do |message, code, level|
+        warning = ActiveRecord::SQLWarning.new(message, code, level, sql, @pool)
+        next if warning_ignored?(warning)
+
+        ActiveRecord.db_warnings_action.call(warning)
+      end
+    end
+    private :handle_warnings
+
+    def warning_ignored?(warning)
+      ["WARNING", "ERROR", "FATAL", "PANIC"].exclude?(warning.level) || super
+    end
+    private :warning_ignored?
+
     # @private `Utils.extract_schema_and_table` from AR
     def extract_schema_and_table(name)
       result = name.scan(/[^".\s]+|"[^"]*"/)[0, 2]
@@ -1050,6 +1073,7 @@ module ActiveRecord::ConnectionAdapters
         with_raw_connection do |conn|
           result = conn.exec_params(sql, type_casted_binds)
           verified!
+          handle_warnings(sql)
           result
         end
       end
