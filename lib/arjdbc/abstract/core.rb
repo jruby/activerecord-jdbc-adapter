@@ -58,7 +58,7 @@ module ArJdbc
       end
 
       # this version of log() automatically fills type_casted_binds from binds if necessary
-      def log(sql, name = "SQL", binds = [], type_casted_binds = [], async: false, &block)
+      def log(sql, name = "SQL", binds = [], type_casted_binds = [], async: false, allow_retry: false, &block)
         if binds.any? && (type_casted_binds.nil? || type_casted_binds.empty?)
           type_casted_binds = lambda {
             # extract_raw_bind_values

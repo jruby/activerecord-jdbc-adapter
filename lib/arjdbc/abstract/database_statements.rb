@@ -90,10 +90,17 @@ module ArJdbc
         end
       end
 
-      def preprocess_query(sql)
-        check_if_write_query(sql) if respond_to?(:check_if_write_query, true)
-        mark_transaction_written_if_write(sql) if respond_to?(:mark_transaction_written_if_write, true)
-        sql
+      # AR >= 8.1 removed these helpers, folding them into #preprocess_query via
+      # the primitives #write_query?, #ensure_writes_are_allowed and
+      # #mark_transaction_written. The JDBC adapters' custom query paths
+      # (e.g. #exec_insert, #execute_and_clear) still call them, so reintroduce
+      # them here on top of those primitives.
+      def mark_transaction_written_if_write(sql)
+        mark_transaction_written if write_query?(sql)
+      end
+
+      def check_if_write_query(sql)
+        ensure_writes_are_allowed(sql) if write_query?(sql)
       end
 
       def raw_execute(sql, name, binds = [], prepare: false, async: false, allow_retry: false, materialize_transactions: true, batch: false)

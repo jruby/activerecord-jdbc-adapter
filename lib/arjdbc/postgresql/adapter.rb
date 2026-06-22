@@ -90,6 +90,10 @@ module ArJdbc
         execute("SET time zone '#{tz}'", 'SCHEMA')
       end unless redshift?
 
+      # Track the timezone the session was configured for so #update_typemap_for_default_timezone
+      # only reconfigures when ActiveRecord.default_timezone actually changes at runtime.
+      @default_timezone = ActiveRecord.default_timezone
+
       # Set interval output format to ISO 8601 for ease of parsing by ActiveSupport::Duration.parse
       execute("SET intervalstyle = iso_8601", "SCHEMA")
 
@@ -183,6 +187,10 @@ module ArJdbc
       true
     end
 
+    def supports_index_include?
+      database_version >= 11_00_00 # >= 11.0
+    end
+
     def supports_transaction_isolation?
       true
     end
@@ -196,6 +204,18 @@ module ArJdbc
     end
 
     def supports_validate_constraints?
+      true
+    end
+
+    def supports_deferrable_constraints?
+      true
+    end
+
+    def supports_exclusion_constraints?
+      true
+    end
+
+    def supports_unique_constraints?
       true
     end
 
@@ -217,6 +237,14 @@ module ArJdbc
 
     def supports_savepoints?
       true
+    end
+
+    def supports_restart_db_transaction?
+      database_version >= 12_00_00 # >= 12.0
+    end
+
+    def supports_close_prepared?
+      false # no JDBC protocol-level equivalent; pgjdbc manages deallocation
     end
 
     def supports_native_partitioning?
@@ -509,8 +537,8 @@ module ArJdbc
     end
 
     def check_version # :nodoc:
-      if database_version < 90300
-        raise "Your version of PostgreSQL (#{database_version}) is too old. Active Record supports PostgreSQL >= 9.3."
+      if database_version < 9_05_00 # < 9.5
+        raise "Your version of PostgreSQL (#{database_version}) is too old. Active Record supports PostgreSQL >= 9.5."
       end
     end
 
@@ -741,39 +769,75 @@ module ArJdbc
       end
     end
 
+    # SQLSTATE codes, see https://www.postgresql.org/docs/current/errcodes-appendix.html
+    VALUE_LIMIT_VIOLATION      = "22001"
+    NUMERIC_VALUE_OUT_OF_RANGE = "22003"
+    NOT_NULL_VIOLATION         = "23502"
+    FOREIGN_KEY_VIOLATION      = "23503"
+    UNIQUE_VIOLATION           = "23505"
+    CHECK_VIOLATION            = "23514"
+    EXCLUSION_VIOLATION        = "23P01"
+    SERIALIZATION_FAILURE      = "40001"
+    DEADLOCK_DETECTED          = "40P01"
+    DUPLICATE_DATABASE         = "42P04"
+    LOCK_NOT_AVAILABLE         = "55P03"
+    QUERY_CANCELED             = "57014"
+
     def translate_exception(exception, message:, sql:, binds:)
       return super unless exception.is_a?(ActiveRecord::JDBCError)
 
-      # TODO: Can we base these on an error code of some kind?
-      case exception.message
-      when /could not create unique index/
-        ::ActiveRecord::RecordNotUnique.new(message, sql: sql, binds: binds, connection_pool: @pool)
-      when /duplicate key value violates unique constraint/
-        ::ActiveRecord::RecordNotUnique.new(message, sql: sql, binds: binds)
-      when /violates not-null constraint/
-        ::ActiveRecord::NotNullViolation.new(message, sql: sql, binds: binds)
-      when /violates foreign key constraint/
-        ::ActiveRecord::InvalidForeignKey.new(message, sql: sql, binds: binds)
-      when /value too long/
-        ::ActiveRecord::ValueTooLong.new(message, sql: sql, binds: binds)
-      when /out of range/
-        ::ActiveRecord::RangeError.new(message, sql: sql, binds: binds)
-      when /could not serialize/
-        ::ActiveRecord::SerializationFailure.new(message, sql: sql, binds: binds)
-      when /deadlock detected/
-        ::ActiveRecord::Deadlocked.new(message, sql: sql, binds: binds)
-      when /lock timeout/
-        ::ActiveRecord::LockWaitTimeout.new(message, sql: sql, binds: binds)
-      when /canceling statement/ # This needs to come after lock timeout because the lock timeout message also contains "canceling statement"
-        ::ActiveRecord::QueryCanceled.new(message, sql: sql, binds: binds)
-      when /relation .* does not exist/i
-        ::ActiveRecord::StatementInvalid.new(message, sql: sql, binds: binds, connection_pool: @pool)
-      when /syntax error at or near/i
-        ::ActiveRecord::StatementInvalid.new(message, sql: sql, binds: binds, connection_pool: @pool)
-      else
-        super
+      # Prefer the driver-provided SQLSTATE; fall back to message matching for
+      # drivers/versions that do not populate a code we recognize.
+      klass = exception_class_for_sql_state(exception.sql_state) ||
+                exception_class_for_message(exception.message)
+      return super unless klass
+
+      klass.new(message, sql: sql, binds: binds, connection_pool: @pool)
+    end
+
+    def exception_class_for_sql_state(sql_state)
+      case sql_state
+      when UNIQUE_VIOLATION           then ::ActiveRecord::RecordNotUnique
+      when FOREIGN_KEY_VIOLATION      then ::ActiveRecord::InvalidForeignKey
+      when NOT_NULL_VIOLATION         then ::ActiveRecord::NotNullViolation
+      when CHECK_VIOLATION            then ::ActiveRecord::CheckViolation
+      when EXCLUSION_VIOLATION        then ::ActiveRecord::ExclusionViolation
+      when VALUE_LIMIT_VIOLATION      then ::ActiveRecord::ValueTooLong
+      when NUMERIC_VALUE_OUT_OF_RANGE then ::ActiveRecord::RangeError
+      when SERIALIZATION_FAILURE      then ::ActiveRecord::SerializationFailure
+      when DEADLOCK_DETECTED          then ::ActiveRecord::Deadlocked
+      when DUPLICATE_DATABASE         then ::ActiveRecord::DatabaseAlreadyExists
+      when LOCK_NOT_AVAILABLE         then ::ActiveRecord::LockWaitTimeout
+      when QUERY_CANCELED             then ::ActiveRecord::QueryCanceled
       end
     end
+    private :exception_class_for_sql_state
+
+    def exception_class_for_message(msg)
+      case msg
+      when /could not create unique index/, /duplicate key value violates unique constraint/
+        ::ActiveRecord::RecordNotUnique
+      when /violates not-null constraint/
+        ::ActiveRecord::NotNullViolation
+      when /violates foreign key constraint/
+        ::ActiveRecord::InvalidForeignKey
+      when /value too long/
+        ::ActiveRecord::ValueTooLong
+      when /out of range/
+        ::ActiveRecord::RangeError
+      when /could not serialize/
+        ::ActiveRecord::SerializationFailure
+      when /deadlock detected/
+        ::ActiveRecord::Deadlocked
+      when /lock timeout/
+        ::ActiveRecord::LockWaitTimeout
+      when /canceling statement/ # must follow lock timeout (its message also contains "canceling statement")
+        ::ActiveRecord::QueryCanceled
+      when /relation .* does not exist/i, /syntax error at or near/i
+        ::ActiveRecord::StatementInvalid
+      end
+    end
+    private :exception_class_for_message
 
     # @private `Utils.extract_schema_and_table` from AR
     def extract_schema_and_table(name)
@@ -1030,9 +1094,14 @@ module ActiveRecord::ConnectionAdapters
     # Check here for more details:
     # https://git.postgresql.org/gitweb/?p=postgresql.git;a=blob;f=src/backend/utils/cache/plancache.c#l573
     def is_cached_plan_failure?(e)
-      pgerror = e.cause
-      pgerror.result.result_error_field(PG::PG_DIAG_SQLSTATE) == FEATURE_NOT_SUPPORTED &&
-        pgerror.result.result_error_field(PG::PG_DIAG_SOURCE_FUNCTION) == "RevalidateCachedQuery"
+      # Under JDBC we don't have access to PG::Result#result_error_field, so we
+      # classify via the JDBC SQLSTATE (0A000 / FEATURE_NOT_SUPPORTED) together
+      # with the server message emitted by RevalidateCachedQuery.
+      error = e.cause || e
+      return false unless error.respond_to?(:sql_state)
+
+      error.sql_state == FEATURE_NOT_SUPPORTED &&
+        error.message.to_s.include?("cached plan must not change result type")
     rescue
       false
     end

@@ -52,6 +52,28 @@ module ArJdbc
           ForeignKeyDefinition.new(table_name, to_table, options)
         end
       end
+
+      # Override to avoid the gem's PG::TextDecoder::Array (pg gem) when decoding
+      # the result of `current_schemas(false)`.
+      def current_schemas
+        schemas = query_value("SELECT current_schemas(false)", "SCHEMA")
+        decode_string_array(schemas)
+      end
+
+      # Rails' PostgreSQL::SchemaStatements#decode_string_array (used by #indexes
+      # and schema dumping since AR 8.x) relies on PG::TextDecoder::Array from the
+      # pg gem, which is unavailable under JDBC. The JDBC driver already decodes
+      # array-typed result columns into Ruby Arrays, so pass those through; only
+      # parse when given a raw PostgreSQL array string.
+      def decode_string_array(value)
+        return value if value.is_a?(::Array)
+        return [] if value.nil?
+
+        @string_array_decoder ||=
+          ActiveRecord::ConnectionAdapters::PostgreSQL::OID::Array::PG::TextDecoder::Array.new(name: nil, delimiter: ",")
+        @string_array_decoder.decode(value)
+      end
+      private :decode_string_array
     end
   end
 end

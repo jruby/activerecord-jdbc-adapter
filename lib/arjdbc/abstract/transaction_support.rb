@@ -64,6 +64,19 @@ module ArJdbc
         end
       end
 
+      # Rolls back the current transaction and immediately starts a fresh one,
+      # the equivalent of PostgreSQL's `ROLLBACK AND CHAIN`. Implemented via the
+      # JDBC transaction API (rollback + begin) since issuing the raw SQL would
+      # bypass the driver's transaction state tracking.
+      def exec_restart_db_transaction
+        log('ROLLBACK AND CHAIN', 'TRANSACTION') do
+          with_raw_connection(allow_retry: false, materialize_transactions: true) do |conn|
+            conn.rollback
+            conn.begin
+          end
+        end
+      end
+
       ########################## Savepoint Interface ############################
 
       # Creates a (transactional) save-point one can rollback to.

@@ -232,19 +232,13 @@ module ArJdbc
       end
 
       def update_typemap_for_default_timezone
-        if @default_timezone != ActiveRecord.default_timezone && @timestamp_decoder
-          decoder_class = ActiveRecord.default_timezone == :utc ?
-                            PG::TextDecoder::TimestampUtc :
-                            PG::TextDecoder::TimestampWithoutTimeZone
-
-          @timestamp_decoder = decoder_class.new(@timestamp_decoder.to_h)
-          @connection.type_map_for_results.add_coder(@timestamp_decoder)
-
+        # Unlike the pg gem (which swaps PG::TextDecoder timestamp coders), the
+        # JDBC driver returns timestamps based on the session time zone set in
+        # #configure_connection. So if ActiveRecord.default_timezone changes at
+        # runtime we just re-run #configure_connection to apply the new zone.
+        if @default_timezone != ActiveRecord.default_timezone
           @default_timezone = ActiveRecord.default_timezone
-
-          # if default timezone has changed, we need to reconfigure the connection
-          # (specifically, the session time zone)
-          configure_connection
+          configure_connection if @raw_connection
         end
       end
 

@@ -573,9 +573,11 @@ module SimpleTestMethods
   end
 
   def test_column_default
-    assert_equal '3.14', DbType.columns_hash['sample_small_decimal'].default
-    assert_equal '-1', DbType.columns_hash['sample_integer_neg_default'].default
-    assert_equal '42', DbType.columns_hash['sample_integer_no_limit'].default
+    # Since Rails 8.1 ConnectionAdapters::Column#default returns the value
+    # deserialized through the column's cast type (was the raw string before).
+    assert_equal BigDecimal('3.14'), DbType.columns_hash['sample_small_decimal'].default
+    assert_equal(-1, DbType.columns_hash['sample_integer_neg_default'].default)
+    assert_equal 42, DbType.columns_hash['sample_integer_no_limit'].default
     assert_equal '', DbType.columns_hash['sample_string'].default
 
     assert_equal(-1, DbType.column_defaults['sample_integer_neg_default'])
