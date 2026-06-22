@@ -30,9 +30,17 @@ ArJdbc::ConnectionMethods.module_eval do
     config[:username] ||= ( config[:user] || ENV['PGUSER'] || ENV_JAVA['user.name'] )
     config[:password] ||= ENV['PGPASSWORD'] unless config.key?(:password)
     properties = ( config[:properties] ||= {} )
-    # PG :connect_timeout - maximum time to wait for connection to succeed
+    # PG :connect_timeout - maximum time to wait for connection to succeed.
+    # Maps to pgjdbc's connectTimeout (connection establishment), matching the
+    # pg gem / libpq meaning of connect_timeout.
     if connect_timeout = ( config[:connect_timeout] || ENV['PGCONNECT_TIMEOUT'] )
-      properties['socketTimeout'] ||= connect_timeout
+      properties['connectTimeout'] ||= connect_timeout
+    end
+    # :socket_timeout - per-query read timeout (pgjdbc socketTimeout). Useful
+    # behind a connection pooler (e.g. PgBouncer) so a dead/reaped backend
+    # surfaces as an error instead of hanging the JVM thread indefinitely.
+    if socket_timeout = config[:socket_timeout]
+      properties['socketTimeout'] ||= socket_timeout
     end
     if login_timeout = config[:login_timeout]
       properties['loginTimeout'] ||= login_timeout
@@ -61,6 +69,16 @@ ArJdbc::ConnectionMethods.module_eval do
     else
       # If prepared statements are off, lets make sure they are really *off*
       properties['prepareThreshold'] = 0
+    end
+
+    # :prepare_threshold - explicit pgjdbc prepareThreshold passthrough. Lets
+    # you control when (or whether) pgjdbc promotes a query to a *named*
+    # server-side prepared statement. Set to 0 to keep using unnamed statements,
+    # which is required behind PgBouncer in transaction/statement pooling mode
+    # (named statements are bound to a single backend). Overrides the value
+    # derived from :prepared_statements above.
+    unless config[:prepare_threshold].nil?
+      properties['prepareThreshold'] = config[:prepare_threshold]
     end
 
     jdbc_connection(config)
