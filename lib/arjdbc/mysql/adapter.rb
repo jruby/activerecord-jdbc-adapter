@@ -203,35 +203,6 @@ module ActiveRecord
 
       alias :reset! :reconnect!
 
-      # Commits the current database transaction.
-      #
-      # Overrides ArJdbc::Abstract::TransactionSupport to disable connection
-      # retries for COMMIT, matching ActiveRecord's native MySQL adapter
-      # (which uses `allow_retry: false`). Retrying a COMMIT after a connection
-      # failure is unsafe on a networked database: `with_raw_connection` would
-      # reconnect, replay an *empty* transaction (the original writes died with
-      # the dropped backend), COMMIT it successfully, and report success -
-      # silently losing the transaction's writes.
-      def commit_db_transaction
-        log('COMMIT', 'TRANSACTION') do
-          with_raw_connection(allow_retry: false, materialize_transactions: true) do |conn|
-            conn.commit
-          end
-        end
-      end
-
-      # Rolls back the current database transaction.
-      #
-      # Overrides ArJdbc::Abstract::TransactionSupport to match ActiveRecord's
-      # native MySQL adapter (`allow_retry: false`).
-      def exec_rollback_db_transaction
-        log('ROLLBACK', 'TRANSACTION') do
-          with_raw_connection(allow_retry: false, materialize_transactions: true) do |conn|
-            conn.rollback
-          end
-        end
-      end
-
       # Disconnects from the database if already connected.
       # Otherwise, this method does nothing.
       def disconnect!

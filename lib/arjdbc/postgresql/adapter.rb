@@ -571,37 +571,6 @@ module ArJdbc
       end
     end
 
-    # Commits the current database transaction.
-    #
-    # Overrides ArJdbc::Abstract::TransactionSupport to disable connection
-    # retries for COMMIT, matching ActiveRecord's native PostgreSQL adapter
-    # (which uses `allow_retry: false`). Retrying a COMMIT after a connection
-    # failure is unsafe on a networked database: `with_raw_connection` would
-    # reconnect, replay an *empty* transaction (the original writes died with
-    # the dropped backend), COMMIT it successfully, and report success -
-    # silently losing the transaction's writes. This is especially reachable
-    # now that backend disconnects (e.g. pgbouncer dropping a connection) are
-    # classified as retryable ConnectionFailed errors.
-    def commit_db_transaction
-      log('COMMIT', 'TRANSACTION') do
-        with_raw_connection(allow_retry: false, materialize_transactions: true) do |conn|
-          conn.commit
-        end
-      end
-    end
-
-    # Rolls back the current database transaction.
-    #
-    # Overrides ArJdbc::Abstract::TransactionSupport to match ActiveRecord's
-    # native PostgreSQL adapter (`allow_retry: false`).
-    def exec_rollback_db_transaction
-      log('ROLLBACK', 'TRANSACTION') do
-        with_raw_connection(allow_retry: false, materialize_transactions: true) do |conn|
-          conn.rollback
-        end
-      end
-    end
-
     def default_sequence_name(table_name, pk = "id") #:nodoc:
       serial_sequence(table_name, pk)
     rescue ActiveRecord::StatementInvalid
@@ -627,9 +596,7 @@ module ArJdbc
       # NOTE: #execute returns an Array of row Hashes here (e.g.
       # [{"client_min_messages"=>"warning"}]), unlike MRI's pg result object,
       # so we read the single value out of the first row.
-      result = execute('SHOW client_min_messages', 'SCHEMA')
-      row = result.first
-      row && row.values.first
+      execute('SHOW client_min_messages', 'SCHEMA').first&.values&.first
     end
 
     # Set the client message level.

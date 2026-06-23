@@ -134,9 +134,11 @@ public class RubyJdbcConnection extends RubyObject {
     private boolean configureConnection = true; // final once initialized
     private int fetchSize = 0; // 0 = JDBC default
 
-    // SQL warnings collected by the most recent #execute call, exposed to the
-    // adapter via #last_warnings so it can honour ActiveRecord.db_warnings_action.
-    private transient IRubyObject lastWarnings;
+    // Head of the SQLWarning chain captured by the most recent #execute call.
+    // Stored as the raw chain (cheap) and mapped to Ruby tuples lazily by
+    // #last_warnings, so the common path (no warnings, or db_warnings_action
+    // disabled) pays no allocation.
+    private transient SQLWarning lastWarnings;
 
     protected RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
@@ -812,9 +814,11 @@ public class RubyJdbcConnection extends RubyObject {
                     updateCount = statement.getUpdateCount();
                 }
 
-                // Capture any SQL warnings (e.g. PostgreSQL RAISE WARNING / NOTICE)
-                // raised while executing, before the statement is closed below.
-                lastWarnings = mapWarnings(context, statement.getWarnings());
+                // Capture the SQL warning chain (e.g. PostgreSQL RAISE WARNING /
+                // NOTICE) before the statement is closed below. The warnings are
+                // already-materialized objects, so holding the head reference is
+                // cheap and safe after close; #last_warnings maps them on demand.
+                lastWarnings = statement.getWarnings();
 
                 return result;
 
@@ -833,7 +837,7 @@ public class RubyJdbcConnection extends RubyObject {
      */
     @JRubyMethod(name = "last_warnings")
     public IRubyObject last_warnings(final ThreadContext context) {
-        return lastWarnings == null ? context.runtime.newEmptyArray() : lastWarnings;
+        return mapWarnings(context, lastWarnings);
     }
 
     /**

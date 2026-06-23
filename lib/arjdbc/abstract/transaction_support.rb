@@ -43,11 +43,19 @@ module ArJdbc
         end
       end
 
+      # COMMIT and ROLLBACK must NOT be retried on a connection failure, matching
+      # ActiveRecord's native adapters (which use `allow_retry: false`). Retrying
+      # a COMMIT after a dropped backend is unsafe on a networked database:
+      # `with_raw_connection` would reconnect, replay an *empty* transaction (the
+      # original writes died with the old backend), COMMIT it successfully, and
+      # report success - silently losing the transaction's writes. (BEGIN above
+      # stays retryable because it is idempotent.) See the save-point note below.
+
       # Commits the current database transaction.
       # @override
       def commit_db_transaction
         log('COMMIT', 'TRANSACTION') do
-          with_raw_connection(allow_retry: true, materialize_transactions: false) do |conn|
+          with_raw_connection(allow_retry: false, materialize_transactions: true) do |conn|
             conn.commit
           end
         end
@@ -58,7 +66,7 @@ module ArJdbc
       # @override
       def exec_rollback_db_transaction
         log('ROLLBACK', 'TRANSACTION') do
-          with_raw_connection(allow_retry: true, materialize_transactions: false) do |conn|
+          with_raw_connection(allow_retry: false, materialize_transactions: true) do |conn|
             conn.rollback
           end
         end
@@ -74,7 +82,7 @@ module ArJdbc
       # save-point statement against it, and report success - silently losing
       # data. ActiveRecord's native adapters route these through
       # `internal_execute` (allow_retry: false, materialize_transactions: true);
-      # we mirror that here. See the COMMIT/ROLLBACK overrides above.
+      # we mirror that here, as do the COMMIT/ROLLBACK methods above.
 
       # Creates a (transactional) save-point one can rollback to.
       # Unlike 'plain' `ActiveRecord` it is allowed to pass a save-point name.
