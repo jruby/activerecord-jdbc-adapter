@@ -241,19 +241,35 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             }
             throw ex;
         }
-        final PGConnection pgConnection;
-        if ( connection instanceof PGConnection ) {
-            pgConnection = (PGConnection) connection;
+        // The physical connection is open now; if any of the post-connect
+        // setup below fails we must close it, otherwise the server-side backend
+        // leaks (the caller only sees the exception and never gets a handle to
+        // close). This mirrors the native adapter discarding a connection that
+        // could not be fully established.
+        try {
+            final PGConnection pgConnection;
+            if ( connection instanceof PGConnection ) {
+                pgConnection = (PGConnection) connection;
+            }
+            else {
+                pgConnection = connection.unwrap(PGConnection.class);
+            }
+            pgConnection.addDataType("daterange", DateRangeType.class);
+            pgConnection.addDataType("tsrange",   TsRangeType.class);
+            pgConnection.addDataType("tstzrange", TstzRangeType.class);
+            pgConnection.addDataType("int4range", Int4RangeType.class);
+            pgConnection.addDataType("int8range", Int8RangeType.class);
+            pgConnection.addDataType("numrange",  NumRangeType.class);
         }
-        else {
-            pgConnection = connection.unwrap(PGConnection.class);
+        catch (SQLException|RuntimeException ex) {
+            try {
+                connection.close();
+            }
+            catch (SQLException closeError) {
+                ex.addSuppressed(closeError);
+            }
+            throw ex;
         }
-        pgConnection.addDataType("daterange", DateRangeType.class);
-        pgConnection.addDataType("tsrange",   TsRangeType.class);
-        pgConnection.addDataType("tstzrange", TstzRangeType.class);
-        pgConnection.addDataType("int4range", Int4RangeType.class);
-        pgConnection.addDataType("int8range", Int8RangeType.class);
-        pgConnection.addDataType("numrange",  NumRangeType.class);
         return connection;
     }
 
