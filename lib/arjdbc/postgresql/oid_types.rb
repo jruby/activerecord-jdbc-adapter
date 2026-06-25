@@ -67,6 +67,45 @@ module ArJdbc
 
     # @private
     module OIDTypes
+
+      # Shared cache of the (expensive) pg_type catalog query results, keyed by
+      # server identity. Lets new connections build their own (isolated) OID type
+      # map without re-running the catalog sweep against the database — the
+      # adapter-side complement to the driver's shared metadata cache.
+      # See docs/lazy-connection-remediation.md (A2).
+      @type_records_cache = {}
+      @type_records_mutex = Mutex.new
+
+      class << self
+        # Cached catalog row-sets for +key+, or nil. Reads happen under the
+        # mutex; the (expensive) catalog queries that produce the rows run
+        # OUTSIDE the lock in the caller, so a slow query can't block other
+        # connections or deadlock if loading re-enters.
+        def get_type_records(key)
+          return nil if key.nil?
+          @type_records_mutex.synchronize { @type_records_cache[key] }
+        end
+
+        # Cache +records+ for +key+ (first writer wins). A brief cold-start
+        # window may run the sweep more than once; it converges immediately.
+        # The structure is deep-frozen so the shared copy is provably immutable:
+        # any number of threads may read it concurrently and #run only ever reads
+        # (it rejects/extracts into fresh arrays), so no lock is needed on reads.
+        def store_type_records(key, records)
+          return if key.nil?
+          records.each { |set| set.each(&:freeze).freeze }.freeze
+          @type_records_mutex.synchronize { @type_records_cache[key] ||= records }
+        end
+
+        # Invalidate the shared rows for +key+ (or all keys) so the next full
+        # load re-queries the catalog — used when types change (extensions/enums).
+        def clear_type_records_cache(key = nil)
+          @type_records_mutex.synchronize do
+            key ? @type_records_cache.delete(key) : @type_records_cache.clear
+          end
+        end
+      end
+
       def get_oid_type(oid, fmod, column_name, sql_type = '') # :nodoc:
         # Note: type_map is storing a bunch of oid type prefixed with a namespace even
         # if they are not namespaced (e.g. ""."oidvector").  builtin types which are
@@ -97,6 +136,10 @@ module ArJdbc
 
       def reload_type_map
         @lock.synchronize do
+          # Drop the shared catalog rows for this database so the next full load
+          # re-queries the catalog (types may have changed: extensions/enums).
+          OIDTypes.clear_type_records_cache(oid_cache_key)
+
           if @type_map
             type_map.clear
           else
@@ -204,11 +247,52 @@ module ArJdbc
 
       def load_additional_types(oids = nil) # :nodoc:
         initializer = ArjdbcTypeMapInitializer.new(type_map)
-        load_types_queries(initializer, oids) do |query|
-          execute_and_clear(query, "SCHEMA", []) do |records|
-            initializer.run(records)
+
+        if oids
+          # Lazy single-OID lookups (an unknown type seen at query time) always
+          # hit the catalog; they're rare and specific to the OID in question.
+          load_types_queries(initializer, oids) do |query|
+            execute_and_clear(query, "SCHEMA", []) do |records|
+              initializer.run(records)
+            end
+          end
+        else
+          # Full load. Replay the shared catalog rows when available; otherwise
+          # run the catalog queries once and cache the rows for other connections
+          # to the same database. #run reads but never mutates the rows, so each
+          # connection safely populates its own type_map from the shared copy.
+          if (cached = OIDTypes.get_type_records(oid_cache_key))
+            cached.each { |records| initializer.run(records) }
+          else
+            # The three catalog queries are built lazily: each WHERE..IN clause
+            # depends on the types #run registered from the previous query, so we
+            # must run() between yields (not after) — while capturing the rows.
+            sets = []
+            load_types_queries(initializer, nil) do |query|
+              execute_and_clear(query, "SCHEMA", []) do |records|
+                rows = records.to_a
+                sets << rows
+                initializer.run(rows)
+              end
+            end
+            OIDTypes.store_type_records(oid_cache_key, sets)
           end
         end
+      end
+
+      # Identifies the database whose pg_type catalog a cached row-set describes.
+      # pg_type lives in pg_catalog: its contents are per-database and independent
+      # of search_path, so the cache is scoped by database NAME, qualified with
+      # host/port to disambiguate same-named databases on different servers.
+      #
+      # The JDBC URL is included as a final component so url-only configs (where
+      # the discrete :host/:port/:database keys may be absent) can never collide
+      # two different databases onto a nil key. When :database isn't given
+      # explicitly we recover it from the URL's path so the name still scopes it.
+      def oid_cache_key
+        database = @config[:database] || @config[:dbname] ||
+                   @config[:url].to_s[%r{//[^/]*/([^?]+)}, 1]
+        [@config[:host], @config[:port], database, @config[:url]]
       end
 
       def load_types_queries(initializer, oids)

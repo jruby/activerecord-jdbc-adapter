@@ -104,7 +104,16 @@ module ArJdbc
         end
       end
 
-      reload_type_map
+      # Build the OID type map once per adapter instance, the first time the
+      # connection is live. Reconnects re-run #configure_connection but reuse the
+      # map (OIDs are stable per server); schema/type changes refresh it
+      # explicitly via #reload_type_map. We call #initialize_type_map (not
+      # #reload_type_map) here so the first connect doesn't invalidate the shared
+      # catalog cache another connection to the same database may have populated.
+      unless @type_map_initialized
+        initialize_type_map
+        @type_map_initialized = true
+      end
     end
 
     # @private
@@ -965,6 +974,11 @@ module ActiveRecord::ConnectionAdapters
       # @local_tz is initialized as nil to avoid warnings when connect tries to use it
       @local_tz = nil
       @max_identifier_length = nil
+
+      # Build the OID type map up front so the guarded build in #configure_connection
+      # has a map to populate. AR 7.2 connects lazily, so the catalog sweep that
+      # fills this map runs on first use, once per adapter (see #configure_connection).
+      @type_map = Type::HashLookupTypeMap.new
 
       @use_insert_returning = @config.key?(:insert_returning) ?
         self.class.type_cast_config_to_boolean(@config[:insert_returning]) : true
