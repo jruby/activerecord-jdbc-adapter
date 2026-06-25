@@ -1,9 +1,9 @@
 source "https://rubygems.org"
 
 if ENV['RAILS']  # Use local clone of Rails
-  rails_dir = ENV['RAILS']    
+  rails_dir = ENV['RAILS']
   activerecord_dir = ::File.join(rails_dir, 'activerecord')
-  
+
   if !::File.exist?(rails_dir) && !::File.exist?(activerecord_dir)
     raise "ENV['RAILS'] set but does not point at a valid rails clone"
   end
@@ -21,7 +21,7 @@ if ENV['RAILS']  # Use local clone of Rails
 
 elsif ENV['AR_VERSION'] # Use specific version of AR and not .gemspec version
   version = ENV['AR_VERSION']
-  
+
   if !version.eql?('false') # Don't bundle any versions of AR; use LOAD_PATH
     # Specified as raw number. Use normal gem require.
     if version =~ /^([0-9.])+(_)?(rc|RC|beta|BETA|PR|pre)*([0-9.])*$/
@@ -41,7 +41,7 @@ elsif ENV['AR_VERSION'] # Use specific version of AR and not .gemspec version
         gem 'actionpack', require: false
         gem 'actionview', require: false
       end
-      
+
     end
   end
 else
@@ -54,9 +54,7 @@ else
   end
 end
 
-# Cap i18n below 1.15.0: that release requires Ruby 3.2+, which we can't assume
-# across the JRuby versions we support.
-gem 'i18n', '< 1.15.0', require: nil
+gem 'i18n', '>= 1.15.1', require: nil
 
 gem 'rake', require: nil
 
@@ -101,7 +99,7 @@ end
 
 group :test do
   # for testing against different version(s)
-  if sqlite_version = ENV['JDBC_SQLITE_VERSION'] 
+  if sqlite_version = ENV['JDBC_SQLITE_VERSION']
     gem 'jdbc-sqlite3', sqlite_version, require: nil, platform: :jruby
   end
 
