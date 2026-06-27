@@ -44,7 +44,7 @@ module ArJdbc
 
         binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
 
-        with_raw_connection do |conn|
+        with_raw_connection(allow_retry: allow_retry, materialize_transactions: materialize_transactions) do |conn|
           if without_prepared_statement?(binds)
             log(sql, name, async: async) { conn.execute_query(sql) }
           else
