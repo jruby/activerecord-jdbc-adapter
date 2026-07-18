@@ -173,6 +173,21 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         // NOTE: only reversed order - just to ~ match how Rails does it :
         /* if ( connection.getAutoCommit() ) */ connection.setAutoCommit(false);
         if ( isolation != null ) setTransactionIsolation(context, connection, isolation);
+        // pgjdbc's setAutoCommit(false) only flips a client-side flag; the
+        // wire-level BEGIN is deferred until the next statement is sent
+        // (QueryExecutorImpl#sendQueryPreamble). Rails 7.1+ lazy transactions
+        // assume begin_db_transaction opens a server-side transaction once
+        // materialized, so flush the deferred BEGIN now with a no-op statement
+        // - pgjdbc prepends BEGIN to it in the same round-trip, matching the
+        // cost of pg's exec("BEGIN").
+        Statement statement = null;
+        try {
+            statement = connection.createStatement();
+            statement.execute("SELECT 1");
+        }
+        finally {
+            close(statement);
+        }
         return context.nil;
     }
 
