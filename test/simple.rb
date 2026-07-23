@@ -297,17 +297,21 @@ module SimpleTestMethods
   if Time.respond_to?(:zone)
 
     def test_time_with_default_timezone_utc
-      with_timezone_config default: :utc do
-        time = Time.local(2000, 1, 2, 10)
-        record = DbType.create!('sample_datetime' => time, 'sample_time' => time)
+      skip "with_system_tz not working in tomcat" if ActiveRecord::Base.connection.raw_connection.jndi?
 
-        saved_time = record.class.find(record.id).reload.sample_datetime
-        assert_equal time, saved_time
-        assert_equal 'UTC', saved_time.zone
+      with_system_tz 'America/New_York' do # with_env_tz in Rails' tests
+        with_timezone_config default: :utc do
+          time = Time.local(2000, 1, 2, 10)
+          record = DbType.create!('sample_datetime' => time, 'sample_time' => time)
 
-        saved_time = record.class.find(record.id).reload.sample_time
-        assert_equal time.change(day: 1), saved_time
-        assert_equal 'UTC', saved_time.zone
+          saved_time = record.class.find(record.id).reload.sample_datetime
+          assert_equal time, saved_time
+          assert_equal 'UTC', saved_time.zone
+
+          saved_time = record.class.find(record.id).reload.sample_time
+          assert_equal time.change(day: 1), saved_time
+          assert_equal 'UTC', saved_time.zone
+        end
       end
     end
 
