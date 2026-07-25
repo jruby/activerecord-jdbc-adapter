@@ -118,6 +118,25 @@ not exist on older JVMs. Keep the pin at JDK 11 unless you also switch the `Rake
 The adapter's own test suite can also be run against local databases, see
 `rakelib/db.rake` and `rake -T test`.
 
+### Confirming the patches still do something
+
+Both patches were checked against 72.1 with a stock (unpatched) jar as a control, so the
+observable difference is known:
+
+- **MySQL / `HOUR_OF_DAY`**: store `2023-03-26 03:30:00` in a `datetime` column (a time that
+  does not exist in `Europe/Riga`, clocks jump 03:00 -> 04:00) and read it back. Stock 72.1
+  raises `ActiveRecord::JDBCError: HOUR_OF_DAY: 3 -> 4`; with the patch the value comes back
+  as the raw String `"2023-03-26 03:30:00"` via the `stringToRuby` fallback, while ordinary
+  timestamps still come back as `Time`.
+- **Postgres / default time zone**: insert and read a `date` after calling
+  `java.util.TimeZone.set_default(...)` post-connection. Stock 72.1 returns the date shifted
+  by a day (`2023-03-25` for `2023-03-26`) because `TZ_DEFAULT` was captured at class load;
+  with the patch it round-trips correctly under `UTC`, `Europe/Riga` and
+  `America/Los_Angeles`.
+
+If a future upstream version makes both of these pass unpatched, the corresponding patch can
+be dropped.
+
 ## Installing the jar into eazyBI
 
 **Do this only once eazyBI is actually on Rails 7.2 / arjdbc 72.1** — dropping a 72.1 jar
@@ -130,6 +149,14 @@ into a checkout that still uses the 61.3 gem will break it.
 2. Copy the jar over
 
         cp lib/arjdbc/jdbc/adapter_java.jar ~/rails/eazybi/lib/arjdbc/jdbc/
+
+3. The MySQL adapter is now registered as **`mysql2`**, not `mysql` (see
+   `ActiveRecord::ConnectionAdapters.register` calls in [`lib/arjdbc.rb`](lib/arjdbc.rb)).
+   eazyBI's `config/database.yml` still picks `"mysql"` under JRuby and has to use
+   `mysql2` for both JRuby and MRI:
+
+        adapter: <%= defined?(JRUBY_VERSION) ? "mysql" : "mysql2" %>   # 61.3
+        adapter: mysql2                                               # 72.1
 
 ## Known issue: the separate MSSQL jar
 
