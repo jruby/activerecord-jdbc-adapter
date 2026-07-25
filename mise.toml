@@ -1,0 +1,12 @@
+[tools]
+# Same JRuby that eazyBI runs (see ~/rails/eazybi/mise.toml).
+ruby = "jruby-9.4.15.0"
+# Build JDK. The Rakefile compiles the extension with `-source 1.8 -target 1.8`,
+# so building on JDK 11 yields class file version 52 - the resulting
+# adapter_java.jar loads on every JVM from Java 11 up to Java 25.
+# Do not bump this without re-reading README_EAZYBI.md ("Java compatibility").
+java = "temurin-11"
+
+[env]
+JAVA_OPTS = "-Xms256m -Xmx2g -Dfile.encoding=UTF-8 -Djava.awt.headless=true"
+JRUBY_OPTS = "--dev -W0"

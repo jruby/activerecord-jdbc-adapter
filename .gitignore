@@ -40,3 +40,5 @@ lib/arjdbc/jdbc/adapter_java.jar
 .solargraph.yml
 pik.sh
 .tool-versions
+mise.local.toml
+.mise.local.toml
