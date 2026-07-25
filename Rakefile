@@ -284,7 +284,7 @@ if defined? JRUBY_VERSION
           if match = requirement.match(/^jar\s+([\w\-\.]+):([\w\-]+),\s+?([\w\.\-]+)?/)
             matched_jar = Jars.send :to_jar, match[1], match[2], match[3], nil
             matched_jar = File.join( Jars.home, matched_jar )
-            matched_jars << matched_jar if File.exists?( matched_jar )
+            matched_jars << matched_jar if File.exist?( matched_jar )
           end
         end
         matched_jars
