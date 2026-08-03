@@ -6,6 +6,7 @@ class PostgreSQLTypesTest < Test::Unit::TestCase
   OID = ActiveRecord::ConnectionAdapters::PostgreSQL::OID
 
   class PostgresqlArray < ActiveRecord::Base; end
+  class PostgresqlJsonb < ActiveRecord::Base; end
   class PostgresqlUUID < ActiveRecord::Base; end
   class PostgresqlRange < ActiveRecord::Base; end
   class PostgresqlTsvector < ActiveRecord::Base; end
@@ -76,12 +77,14 @@ class PostgreSQLTypesTest < Test::Unit::TestCase
     execute "CREATE TABLE postgresql_oids ( id SERIAL PRIMARY KEY, obj_id OID );"
 
     execute "CREATE TABLE postgresql_timestamp_with_zones ( id SERIAL PRIMARY KEY, time TIMESTAMP WITH TIME ZONE );"
+
+    execute "CREATE TABLE postgresql_jsonbs ( id SERIAL PRIMARY KEY, payload jsonb );"
   end
 
   def self.shutdown
     %w(postgresql_arrays postgresql_uuids postgresql_ranges postgresql_tsvectors
   postgresql_moneys postgresql_numbers  postgresql_times postgresql_network_addresses
-  postgresql_bit_strings postgresql_oids postgresql_timestamp_with_zones).each do |table_name|
+  postgresql_bit_strings postgresql_oids postgresql_timestamp_with_zones postgresql_jsonbs).each do |table_name|
       execute "DROP TABLE IF EXISTS #{table_name}"
     end
     super
@@ -239,11 +242,27 @@ _SQL
 
     @connection.execute("INSERT INTO postgresql_uuids (id, guid, compact_guid) VALUES(1, 'd96c3da0-96c1-012f-1316-64ce8f32c6d8', 'f06c715096c1012f131764ce8f32c6d8')")
     @first_uuid = PostgresqlUUID.find(1)
+
+    @connection.execute <<~SQL
+      INSERT INTO postgresql_jsonbs (id, payload)
+      VALUES (
+        1,
+        '{"fields":[{"id":"fld1","name":"Name","type":"singleLineText"}],"profile":{"name":"User","age":25,"active":true}}'::jsonb
+      )
+    SQL
+
+    @connection.execute <<~SQL
+      INSERT INTO postgresql_jsonbs (id, payload)
+      VALUES (
+        2,
+        '{"fields":[{"id":"fld2","name":"Title","type":"number"}],"profile":{"name":"Admin","age":40,"active":false}}'::jsonb
+      )
+    SQL
   end
 
   def teardown
     [PostgresqlArray, PostgresqlTsvector, PostgresqlMoney, PostgresqlNumber, PostgresqlTime, PostgresqlNetworkAddress,
-     PostgresqlBitString, PostgresqlOid, PostgresqlTimestampWithZone, PostgresqlUUID].each(&:delete_all)
+     PostgresqlBitString, PostgresqlOid, PostgresqlTimestampWithZone, PostgresqlUUID, PostgresqlJsonb].each(&:delete_all)
   end
 
   def test_data_type_of_array_types
@@ -254,6 +273,65 @@ _SQL
     text_array_type = PostgresqlArray.type_for_attribute('nicknames')
     assert_instance_of OID::Array, text_array_type
     assert_instance_of ActiveRecord::Type::Text, text_array_type.subtype
+  end
+
+  def test_pluck_jsonb_sql_fragment_type_casts_values
+    values = PostgresqlJsonb.pluck(Arel.sql("payload -> 'fields'"))
+
+    assert_equal 2, values.size
+    assert_equal [Array, Array], values.map(&:class)
+    assert_equal(
+      [
+        [{ "id" => "fld1", "name" => "Name", "type" => "singleLineText" }],
+        [{ "id" => "fld2", "name" => "Title", "type" => "number" }]
+      ],
+      values
+    )
+  end
+
+  def test_select_all_jsonb_sql_fragment_exposes_indexed_column_type
+    result = @connection.select_all("SELECT payload -> 'fields' AS extracted FROM postgresql_jsonbs")
+
+    assert_instance_of OID::Jsonb, result.column_types["extracted"]
+    assert_instance_of OID::Jsonb, result.column_types[0]
+  end
+
+  def test_pluck_jsonb_nested_object_sql_fragment_type_casts_values
+    values = PostgresqlJsonb.pluck(Arel.sql("payload -> 'profile'"))
+
+    assert_equal 2, values.size
+    assert_equal [Hash, Hash], values.map(&:class)
+    assert_equal(
+      [
+        { "name" => "User", "age" => 25, "active" => true },
+        { "name" => "Admin", "age" => 40, "active" => false }
+      ],
+      values
+    )
+  end
+
+  def test_pluck_jsonb_nested_integer_sql_fragment_type_casts_values
+    values = PostgresqlJsonb.pluck(Arel.sql("payload -> 'profile' -> 'age'"))
+
+    assert_equal 2, values.size
+    assert_equal [Integer, Integer], values.map(&:class)
+    assert_equal [25, 40], values
+  end
+
+  def test_pluck_jsonb_nested_boolean_sql_fragment_type_casts_values
+    values = PostgresqlJsonb.pluck(Arel.sql("payload -> 'profile' -> 'active'"))
+
+    assert_equal 2, values.size
+    assert_equal [TrueClass, FalseClass], values.map(&:class)
+    assert_equal [true, false], values
+  end
+
+  def test_pluck_jsonb_nested_string_sql_fragment_type_casts_values
+    values = PostgresqlJsonb.pluck(Arel.sql("payload -> 'profile' -> 'name'"))
+
+    assert_equal 2, values.size
+    assert_equal [String, String], values.map(&:class)
+    assert_equal ["User", "Admin"], values
   end
 
   def test_data_type_of_range_types
