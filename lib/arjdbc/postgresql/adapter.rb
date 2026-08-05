@@ -22,6 +22,7 @@ require 'arjdbc/abstract/transaction_support'
 require 'arjdbc/postgresql/base/array_decoder'
 require 'arjdbc/postgresql/base/array_encoder'
 require 'arjdbc/postgresql/name'
+require 'arjdbc/postgresql/pg_compat'
 require 'arjdbc/postgresql/database_statements'
 require 'arjdbc/postgresql/schema_statements'
 require "arjdbc/postgresql/adapter_hash_config"

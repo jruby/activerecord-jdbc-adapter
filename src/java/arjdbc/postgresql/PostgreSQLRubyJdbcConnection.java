@@ -229,6 +229,68 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         });
     }
 
+    // libpq PQtransactionStatus codes (see PG::PQTRANS_* / pg_compat.rb).
+    private static final int PQTRANS_IDLE    = 0;
+    private static final int PQTRANS_INTRANS = 2;
+    private static final int PQTRANS_INERROR = 3;
+    private static final int PQTRANS_UNKNOWN = 4;
+    // libpq PQstatus codes (see PG::CONNECTION_* / pg_compat.rb).
+    private static final int CONNECTION_OK  = 0;
+    private static final int CONNECTION_BAD = 1;
+
+    /**
+     * Mirrors <code>PG::Connection#transaction_status</code>. ActiveRecord's
+     * #retryable_query_error? distinguishes PQTRANS_INERROR from other states,
+     * so we read the JDBC driver's protocol-level transaction state (exposed
+     * only on the internal BaseConnection; PGConnection has no equivalent).
+     */
+    @JRubyMethod(name = "transaction_status")
+    public IRubyObject transaction_status(final ThreadContext context) {
+        // getTransactionState() is a local protocol-state read (no server
+        // round-trip), so use the plain accessor rather than withConnection's
+        // retry/reconnect machinery; a missing/closed connection or any error
+        // falls through to PQTRANS_UNKNOWN (matching libpq).
+        final Connection connection = getConnection(false);
+        try {
+            if (connection != null) {
+                final org.postgresql.core.BaseConnection base =
+                    connection.unwrap(org.postgresql.core.BaseConnection.class);
+                switch (base.getTransactionState()) {
+                    case IDLE:   return context.runtime.newFixnum(PQTRANS_IDLE);
+                    case OPEN:   return context.runtime.newFixnum(PQTRANS_INTRANS);
+                    case FAILED: return context.runtime.newFixnum(PQTRANS_INERROR);
+                }
+            }
+        }
+        catch (SQLException e) { /* fall through to unknown */ }
+        return context.runtime.newFixnum(PQTRANS_UNKNOWN);
+    }
+
+    /**
+     * Mirrors <code>PG::Connection#status</code> (CONNECTION_OK / CONNECTION_BAD).
+     * A closed connection reports CONNECTION_BAD so AR / test helpers reconnect.
+     */
+    @JRubyMethod(name = "status")
+    public IRubyObject status(final ThreadContext context) {
+        final Connection connection = getConnection(false);
+        try {
+            if (connection != null && !connection.isClosed()) {
+                return context.runtime.newFixnum(CONNECTION_OK);
+            }
+        }
+        catch (SQLException e) { /* treat as bad below */ }
+        return context.runtime.newFixnum(CONNECTION_BAD);
+    }
+
+    /**
+     * Mirrors <code>PG::Connection#async_exec</code>; under JDBC the statement
+     * runs synchronously. Used by Rails' +remote_disconnect+ test helper.
+     */
+    @JRubyMethod(name = "async_exec", required = 1)
+    public IRubyObject async_exec(final ThreadContext context, final IRubyObject sql) {
+        return execute(context, sql);
+    }
+
     @JRubyMethod
     public IRubyObject exec_params(ThreadContext context, IRubyObject sql, IRubyObject binds) {
         return execute_prepared_query(context, sql, binds, null);
