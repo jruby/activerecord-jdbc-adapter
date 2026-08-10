@@ -21,20 +21,21 @@ must be the same version.
 | `221a5c43` | `src/java/arjdbc/mysql/MySQLRubyJdbcConnection.java` | Override `timestampToRuby`, copied verbatim from `RubyJdbcConnection` |
 | `5201d005` | same | Catch the `HOUR_OF_DAY` `SQLException` and fall back to `stringToRuby`. Happens when the app/DB time zone is not UTC and the value read (e.g. `updated_at_utc`) does not exist in the server time zone (DST gap) |
 | `7a7f8ba3` | `src/java/arjdbc/postgresql/PostgreSQLRubyJdbcConnection.java` | Read `TimeZone.getDefault()` on every `setDate` instead of caching it in the `TZ_DEFAULT` constant, because eazyBI changes the default time zone at runtime |
+| `TODO` | same | Remove the `setStringParameter` override that guessed a UUID type for untyped string binds. Rails 7.2 binds a multi value IN and a where with placeholders without the column type, so a string that only looks like a UUID was sent as `uuid` and failed with `character varying = uuid` (EAZYBI-7339). Drop this patch if upstream merges [#1087](https://github.com/jruby/activerecord-jdbc-adapter/pull/1087) or [#1206](https://github.com/jruby/activerecord-jdbc-adapter/pull/1206) |
 
-All three are authored by Jānis Justaments and were originally made against 61.3 in
-https://github.com/eazybi/activerecord-jdbc-adapter/pull/1. They are marked in the source
-with `// PATCH:` comments, and the replaced upstream lines are kept commented out right
-above, so the next upgrade can see exactly what changed.
+The first three are authored by Jānis Justaments and were originally made against 61.3 in
+https://github.com/eazybi/activerecord-jdbc-adapter/pull/1. All patches are marked in the
+source with `// PATCH:` comments, and the replaced upstream lines are kept commented out
+right above, so the next upgrade can see exactly what changed.
 
 ### Upgrading to a newer upstream version
 
-Create a new `eazybi-<version>` branch off the upstream tag and cherry-pick the three
+Create a new `eazybi-<version>` branch off the upstream tag and cherry-pick the four
 commits above — do not merge this branch:
 
     git fetch upstream --tags
     git checkout -b eazybi-73.0 v73.0
-    git cherry-pick 221a5c43 5201d005 7a7f8ba3   # order matters, 2 builds on 1
+    git cherry-pick 221a5c43 5201d005 7a7f8ba3 TODO   # order matters, 2 builds on 1
 
 Then check that `RubyJdbcConnection#timestampToRuby` upstream has not changed, since the
 MySQL override is a copy of it:
@@ -104,11 +105,16 @@ not exist on older JVMs. Keep the pin at JDK 11 unless you also switch the `Rake
     javap -c -p -classpath lib/arjdbc/jdbc/adapter_java.jar \
       arjdbc.postgresql.PostgreSQLRubyJdbcConnection | grep -c 'TimeZone.getDefault'
 
-    # 3. bytecode is Java 8/11-compatible -> expect "cafe babe 0000 0034"
+    # 3. the Postgres setStringParameter override with the UUID guessing is gone
+    #    (stock 72.1 prints the method) -> expect no output
+    javap -p -classpath lib/arjdbc/jdbc/adapter_java.jar \
+      arjdbc.postgresql.PostgreSQLRubyJdbcConnection | grep setStringParameter
+
+    # 4. bytecode is Java 8/11-compatible -> expect "cafe babe 0000 0034"
     unzip -p lib/arjdbc/jdbc/adapter_java.jar \
       arjdbc/mysql/MySQLRubyJdbcConnection.class | head -c 8 | xxd
 
-    # 4. it loads and queries under ActiveRecord 7.2 (repeat under Java 25 with
+    # 5. it loads and queries under ActiveRecord 7.2 (repeat under Java 25 with
     #    `mise x java@temurin-25 -- env AR_VERSION=...`)
     AR_VERSION=7-2-stable bundle exec jruby -Ilib -e '
       require "active_record"; require "arjdbc"
@@ -120,7 +126,7 @@ The adapter's own test suite can also be run against local databases, see
 
 ### Confirming the patches still do something
 
-Both patches were checked against 72.1 with a stock (unpatched) jar as a control, so the
+The patches were checked against 72.1 with a stock (unpatched) jar as a control, so the
 observable difference is known:
 
 - **MySQL / `HOUR_OF_DAY`**: store `2023-03-26 03:30:00` in a `datetime` column (a time that
@@ -133,8 +139,14 @@ observable difference is known:
   by a day (`2023-03-25` for `2023-03-26`) because `TZ_DEFAULT` was captured at class load;
   with the patch it round-trips correctly under `UTC`, `Europe/Riga` and
   `America/Los_Angeles`.
+- **Postgres / UUID-like strings**: query a `varchar` column with a multi value IN containing
+  a UUID-like string, e.g. `Account.where(name: ["550e8400-e29b-41d4-a716-446655440000", "x"])`
+  or the `where("name IN (?)", ...)` placeholder form. Stock 72.1 raises
+  `ActiveRecord::JDBCError: ... operator does not exist: character varying = uuid`; with the
+  patch the row is found. Covered end to end by `spec/models/user_spec.rb`
+  (`#get_account_users`) in the eazyBI repository.
 
-If a future upstream version makes both of these pass unpatched, the corresponding patch can
+If a future upstream version makes all of these pass unpatched, the corresponding patch can
 be dropped.
 
 ## Installing the jar into eazyBI
