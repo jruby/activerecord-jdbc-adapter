@@ -9,7 +9,11 @@ import java.sql.SQLException;
 import java.sql.Types;
 
 import arjdbc.util.PG;
-import org.jruby.*;
+import org.jruby.Ruby;
+import org.jruby.RubyArray;
+import org.jruby.RubyClass;
+import org.jruby.RubyHash;
+import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.Block;
 import org.jruby.runtime.Helpers;
