@@ -297,17 +297,21 @@ module SimpleTestMethods
   if Time.respond_to?(:zone)
 
     def test_time_with_default_timezone_utc
-      with_timezone_config default: :utc do
-        time = Time.local(2000, 1, 2, 10)
-        record = DbType.create!('sample_datetime' => time, 'sample_time' => time)
+      skip "with_system_tz not working in tomcat" if ActiveRecord::Base.connection.raw_connection.jndi?
 
-        saved_time = record.class.find(record.id).reload.sample_datetime
-        assert_equal time, saved_time
-        assert_equal 'UTC', saved_time.zone
+      with_system_tz 'America/New_York' do # with_env_tz in Rails' tests
+        with_timezone_config default: :utc do
+          time = Time.local(2000, 1, 2, 10)
+          record = DbType.create!('sample_datetime' => time, 'sample_time' => time)
 
-        saved_time = record.class.find(record.id).reload.sample_time
-        assert_equal time.change(day: 1), saved_time
-        assert_equal 'UTC', saved_time.zone
+          saved_time = record.class.find(record.id).reload.sample_datetime
+          assert_equal time, saved_time
+          assert_equal 'UTC', saved_time.zone
+
+          saved_time = record.class.find(record.id).reload.sample_time
+          assert_equal time.change(day: 1), saved_time
+          assert_equal 'UTC', saved_time.zone
+        end
       end
     end
 
@@ -334,6 +338,22 @@ module SimpleTestMethods
     end
 
     #
+
+    def test_preserving_time_objects_with_local_time_conversion_to_default_timezone_utc
+      skip "with_system_tz not working in tomcat" if ActiveRecord::Base.connection.raw_connection.jndi?
+
+      with_system_tz 'America/New_York' do # with_env_tz in Rails' tests
+        with_timezone_config default: :utc do
+          time = Time.local(2000)
+          record = DbType.create!('sample_datetime' => time)
+          saved_time = record.class.find(record.id).reload.sample_datetime
+
+          assert_equal time, saved_time
+          assert_equal [0, 0, 0, 1, 1, 2000, 6, 1, false, 'EST'], time.to_a
+          assert_equal [0, 0, 5, 1, 1, 2000, 6, 1, false, 'UTC'], saved_time.to_a
+        end
+      end
+    end
 
     def test_preserving_time_objects_with_utc_time_conversion_to_default_timezone_local
       skip "with_system_tz not working in tomcat" if ActiveRecord::Base.connection.raw_connection.jndi?

@@ -3,7 +3,9 @@ package arjdbc.postgresql;
 import arjdbc.util.DateTimeUtils;
 import org.joda.time.DateTimeZone;
 import org.jruby.RubyArray;
-import org.jruby.RubyFloat;
+import org.jruby.RubyNumeric;
+import org.jruby.RubyInteger;
+import org.jruby.RubyFixnum;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 
@@ -22,12 +24,18 @@ public abstract class PgDateTimeUtils extends DateTimeUtils {
      */
     public static String timestampValueToString(final ThreadContext context, IRubyObject value, DateTimeZone zone,
                                          boolean withZone) {
-        if (value instanceof RubyFloat) {
-            final double dv = ((RubyFloat) value).getValue();
-            if (dv == Double.POSITIVE_INFINITY) {
-                return "infinity";
-            } else if (dv == Double.NEGATIVE_INFINITY) {
-                return "-infinity";
+        if (value instanceof RubyNumeric valueNumeric) {
+            final IRubyObject infinite = valueNumeric.infinite_p(context);
+            if (infinite instanceof RubyFixnum infiniteFixnum) {
+                if (infiniteFixnum.getValue() > 0) {
+                    return "infinity";
+                } else {
+                    return "-infinity";
+                }
+            }
+            // Rails 8.0 removed Numeric#toTime, so we have to handle this here
+            if (valueNumeric instanceof RubyInteger) {
+                return valueNumeric.asString().toString();
             }
         }
         return timestampTimeToString(context, value, zone, withZone);

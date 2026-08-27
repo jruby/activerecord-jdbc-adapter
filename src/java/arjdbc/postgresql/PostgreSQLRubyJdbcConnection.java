@@ -52,6 +52,8 @@ import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
+import org.jruby.runtime.callsite.CachingCallSite;
+import org.jruby.runtime.callsite.FunctionalCachingCallSite;
 import org.jruby.util.ByteList;
 
 import org.jruby.util.TypeConverter;
@@ -111,6 +113,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
     private RubyClass resultClass;
     private RubyHash typeMap = null;
+    private boolean decodeDates = false;
 
     public PostgreSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
@@ -146,6 +149,17 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         // since it collides with AR as it likes to use the key for its own purposes :
         // e.g. config[:options] = "-c geqo=off"
         return DriverWrapper.buildURL(url, Collections.EMPTY_MAP);
+    }
+
+    @Override
+    protected Integer jdbcTypeForPrimitiveAttribute(final ThreadContext context,
+                                                    final IRubyObject attribute) throws SQLException {
+        if (attribute instanceof RubyNumeric || attribute instanceof RubyBoolean) {
+            return Types.VARCHAR;
+        } else if (attribute instanceof RubyHash) { // Should be a pg-style bind-param hash
+            return Types.BINARY;
+        }
+        return super.jdbcTypeForPrimitiveAttribute(context, attribute);
     }
 
     @Override
@@ -267,6 +281,22 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         return PostgreSQLResult.newResult(context, resultClass, this, resultSet);
     }
 
+    @Override
+    protected IRubyObject mapEmptyExecuteResult(final ThreadContext context, final long updateCount) {
+        return PostgreSQLResult.newEmptyResult(context, resultClass, this, updateCount);
+    }
+
+    @Override
+    protected IRubyObject mapToRawResult(final ThreadContext context,
+            final Connection connection, final ResultSet resultSet,
+            final boolean downCase) throws SQLException {
+        if (downCase) {
+            return super.mapToRawResult(context, connection, resultSet, true);
+        } else {
+            return mapExecuteResult(context, connection, resultSet);
+        }
+    }
+
     /**
      * Maps a query result set into a <code>ActiveRecord</code> result.
      * @param context
@@ -298,11 +328,30 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             break;
         }
         default:
-            values = valueForDB.toArray();
+            final IRubyObject adapter = ActiveRecord(context).getClass(context, "Base").callMethod(context, "connection");
+            values = typeCastArrayValues(context, adapter, valueForDB);
             break;
         }
 
         statement.setArray(index, connection.createArrayOf(typeName, values));
+    }
+
+    private final CachingCallSite type_cast_site = new FunctionalCachingCallSite("type_cast");
+
+    private Object[] typeCastArrayValues(final ThreadContext context, final IRubyObject adapter, final RubyArray<?> values) {
+        final int size = values.size();
+        final Object[] result = new Object[size];
+        for (int i = 0; i < size; i++) {
+            final IRubyObject elem = values.eltInternal(i);
+            if (elem instanceof RubyArray<?> arrayElem) {
+                result[i] = typeCastArrayValues(context, adapter, arrayElem);
+            } else {
+                // This could be a performance bottleneck, but it ensures that behaviour aligns with PG gem. Might want to revisit this later.
+                final IRubyObject cast = type_cast_site.call(context, adapter, adapter, elem);
+                result[i] = cast.isNil() ? null : cast.toJava(Object.class);
+            }
+        }
+        return result;
     }
 
     protected void setDecimalParameter(final ThreadContext context,
@@ -332,8 +381,11 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         if ( value instanceof RubyIO ) { // IO/File
             statement.setBinaryStream(index, ((RubyIO) value).getInStream());
         }
-        else { // should be a RubyString
-            final ByteList bytes = value.asString().getByteList();
+        else { // should be a RubyString, or pg-style bind-param hash
+            final IRubyObject binary = value instanceof RubyHash hashValue
+                    ? hashValue.op_aref(context, context.runtime.newSymbol("value"))
+                    : value;
+            final ByteList bytes = binary.asString().getByteList();
             statement.setBinaryStream(index,
                     new ByteArrayInputStream(bytes.unsafeBytes(), bytes.getBegin(), bytes.getRealSize()),
                     bytes.getRealSize() // length
@@ -347,7 +399,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final int index, IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
         // PGJDBC uses strings internally anyway, so using Timestamp doesn't do any good
-        String tsString = PgDateTimeUtils.timestampValueToString(context, value, null, true);
+        String tsString = PgDateTimeUtils.timestampValueToString(context, value, getDefaultTimeZone(context), true);
         statement.setObject(index, tsString, Types.OTHER);
     }
 
@@ -612,10 +664,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final PreparedStatement statement, final int index,
         final IRubyObject value, final String columnType) throws SQLException {
 
-        final PGobject pgJson = new PGobject();
-        pgJson.setType(columnType);
-        pgJson.setValue(value.toString());
-        statement.setObject(index, pgJson);
+        statement.setObject(index, value.toString(), Types.OTHER);
     }
 
     private void setPGobjectParameter(final PreparedStatement statement, final int index,
@@ -804,6 +853,10 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final String value = resultSet.getString(index);
         if (value == null) return context.nil;
 
+        if (!decodeDates) {
+            return RubyString.newUnicodeString(runtime, value);
+        }
+
         final int len = value.length();
         if (len < 10 && value.charAt(len - 1) == 'y') { // infinity / -infinity
             IRubyObject infinity = parseInfinity(context.runtime, value);
@@ -854,10 +907,9 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         }
 
         if (object instanceof Map) { // hstore
-            // by default we avoid double parsing by driver and then column :
-            final RubyHash rubyObject = RubyHash.newHash(context.runtime);
-            rubyObject.putAll((Map) object); // converts keys/values to ruby
-            return rubyObject;
+            // This will be parsed by OID::HStore#deserialize
+            // Can't use hash as before due to hash breaking dirty tracking
+            return runtime.newString(resultSet.getString(index));
         }
 
         return JavaUtil.convertJavaToRuby(runtime, object);
@@ -1083,5 +1135,11 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         TypeConverter.checkHashType(context.runtime, mapArg);
         this.typeMap = (RubyHash) mapArg;
         return mapArg;
+    }
+
+    @PG @JRubyMethod(name = "decode_dates=")
+    public IRubyObject setDecodeDates(ThreadContext context, IRubyObject value) {
+        this.decodeDates = value.isTrue();
+        return value;
     }
 }

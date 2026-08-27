@@ -29,6 +29,8 @@ require "arjdbc/postgresql/adapter_hash_config"
 require 'active_model'
 
 require "arjdbc/abstract/relation_query_attribute_monkey_patch"
+require "arjdbc/abstract/time_value_jruby_compat_monkey_patch"
+require "arjdbc/abstract/mock_logger_jruby_compat_monkey_patch"
 
 module ArJdbc
   # Strives to provide Rails built-in PostgreSQL adapter (API) compatibility.
@@ -103,6 +105,8 @@ module ArJdbc
           execute("SET SESSION #{k} TO #{quote(v)}", 'SCHEMA')
         end
       end
+
+      @raw_connection.decode_dates = decode_dates # Copy to java land for performance
 
       reload_type_map
     end
@@ -325,6 +329,7 @@ module ArJdbc
     #   Set to +:cascade+ to drop dependent objects as well.
     #   Defaults to false.
     def disable_extension(name, force: false)
+      _schema, name = name.to_s.split(".").values_at(-2, -1)
       internal_exec_query("DROP EXTENSION IF EXISTS \"#{name}\"#{' CASCADE' if force == :cascade}").tap {
         reload_type_map
       }
@@ -405,23 +410,27 @@ module ArJdbc
     end
 
     # Rename an existing enum type to something else.
-    def rename_enum(name, options = {})
-      to = options.fetch(:to) { raise ArgumentError, ":to is required" }
+    def rename_enum(name, new_name = nil, **options)
+      new_name ||= options.fetch(:to) do
+        raise ArgumentError, "rename_enum requires two from/to name positional arguments."
+      end
 
-      exec_query("ALTER TYPE #{quote_table_name(name)} RENAME TO #{to}").tap { reload_type_map }
+      exec_query("ALTER TYPE #{quote_table_name(name)} RENAME TO #{quote_table_name(new_name)}").tap { reload_type_map }
     end
 
     # Add enum value to an existing enum type.
     def add_enum_value(type_name, value, options = {})
       before, after = options.values_at(:before, :after)
-      sql = +"ALTER TYPE #{quote_table_name(type_name)} ADD VALUE '#{value}'"
+      sql = +"ALTER TYPE #{quote_table_name(type_name)} ADD VALUE"
+      sql << " IF NOT EXISTS" if options[:if_not_exists]
+      sql << " #{quote(value)}"
 
       if before && after
         raise ArgumentError, "Cannot have both :before and :after at the same time"
       elsif before
-        sql << " BEFORE '#{before}'"
+        sql << " BEFORE #{quote(before)}"
       elsif after
-        sql << " AFTER '#{after}'"
+        sql << " AFTER #{quote(after)}"
       end
 
       execute(sql).tap { reload_type_map }
@@ -500,8 +509,12 @@ module ArJdbc
         sql << " ON CONFLICT #{insert.conflict_target} DO NOTHING"
       elsif insert.update_duplicates?
         sql << " ON CONFLICT #{insert.conflict_target} DO UPDATE SET "
-        sql << insert.touch_model_timestamps_unless { |column| "#{insert.model.quoted_table_name}.#{column} IS NOT DISTINCT FROM excluded.#{column}" }
-        sql << insert.updatable_columns.map { |column| "#{column}=excluded.#{column}" }.join(",")
+        if insert.raw_update_sql?
+          sql << insert.raw_update_sql
+        else
+          sql << insert.touch_model_timestamps_unless { |column| "#{insert.model.quoted_table_name}.#{column} IS NOT DISTINCT FROM excluded.#{column}" }
+          sql << insert.updatable_columns.map { |column| "#{column}=excluded.#{column}" }.join(",")
+        end
       end
 
       sql << " RETURNING #{insert.returning}" if insert.returning
@@ -515,16 +528,20 @@ module ArJdbc
     end
 
     def exec_insert(sql, name = nil, binds = [], pk = nil, sequence_name = nil, returning: nil) # :nodoc:
-      val = super
-      if !use_insert_returning? && pk
+      if use_insert_returning? || pk == false
+        sql, binds = sql_for_insert(sql, pk, binds, returning)
+        internal_exec_query(sql, name, binds)
+      else
+        result = internal_exec_query(sql, name, binds)
         unless sequence_name
           table_ref = extract_table_ref_from_insert_sql(sql)
-          sequence_name = default_sequence_name(table_ref, pk)
-          return val unless sequence_name
+          if table_ref
+            pk = primary_key(table_ref) if pk.nil?
+            sequence_name = default_sequence_name(table_ref, pk)
+          end
+          return result unless sequence_name
         end
         last_insert_id_result(sequence_name)
-      else
-        val
       end
     end
 
@@ -575,12 +592,6 @@ module ArJdbc
       end
     end
 
-    def default_sequence_name(table_name, pk = "id") #:nodoc:
-      serial_sequence(table_name, pk)
-    rescue ActiveRecord::StatementInvalid
-      %Q("#{table_name}_#{pk}_seq")
-    end
-
     def last_insert_id_result(sequence_name)
       exec_query("SELECT currval('#{sequence_name}')", 'SQL')
     end
@@ -596,8 +607,7 @@ module ArJdbc
     # Returns the current client message level.
     def client_min_messages
       return nil if redshift? # not supported on Redshift
-      # Need to use #execute so we don't try to access the type map before it is initialized
-      execute('SHOW client_min_messages', 'SCHEMA').values.first.first
+      query_value("SHOW client_min_messages", "SCHEMA")
     end
 
     # Set the client message level.
@@ -704,11 +714,6 @@ module ArJdbc
              AND a.attnum > 0 AND NOT a.attisdropped
            ORDER BY a.attnum
       SQL
-    end
-
-    def extract_table_ref_from_insert_sql(sql)
-      sql[/into\s("[A-Za-z0-9_."\[\]\s]+"|[A-Za-z0-9_."\[\]]+)\s*/im]
-      $1.strip if $1
     end
 
     def arel_visitor

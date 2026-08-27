@@ -13,8 +13,6 @@ import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyClass;
 import org.jruby.RubyHash;
-import org.jruby.RubyModule;
-import org.jruby.RubyNumeric;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.Block;
@@ -38,6 +36,9 @@ public class PostgreSQLResult extends JdbcResult {
 
     // These are needed when generating an AR::Result
     private final ResultSetMetaData resultSetMetaData;
+
+    // An optional number of updated rows
+    private final long cmdTuples;
 
     /********* JRuby compat methods ***********/
 
@@ -64,6 +65,19 @@ public class PostgreSQLResult extends JdbcResult {
         return new PostgreSQLResult(context, clazz, connection, resultSet);
     }
 
+    /**
+     * Generates a new empty PostgreSQLResult object with a given number of updates
+     * @param context current thread context
+     * @param clazz metaclass for this result object
+     * @param updateCount the number of updated items
+     * @return an instantiated result object
+     * @throws SQLException throws!
+     */
+    static PostgreSQLResult newEmptyResult(ThreadContext context, RubyClass clazz, PostgreSQLRubyJdbcConnection connection,
+                                           long updateCount) {
+        return new PostgreSQLResult(context, clazz, connection, updateCount);
+    }
+
     /********* End JRuby compat methods ***********/
 
     private PostgreSQLResult(ThreadContext context, RubyClass clazz, RubyJdbcConnection connection,
@@ -71,6 +85,15 @@ public class PostgreSQLResult extends JdbcResult {
         super(context, clazz, connection, resultSet);
 
         resultSetMetaData = resultSet.getMetaData();
+        cmdTuples = -1;
+    }
+
+    private PostgreSQLResult(ThreadContext context, RubyClass clazz, RubyJdbcConnection connection,
+                             long updateCount) {
+        super(context, clazz, connection);
+
+        resultSetMetaData = null;
+        cmdTuples = updateCount;
     }
 
     /**
@@ -107,7 +130,10 @@ public class PostgreSQLResult extends JdbcResult {
                     runtime.newFixnum(mod),
                     name);
 
-            if (!type.isNil()) types.fastASet(name, type);
+            if (!type.isNil()) {
+                types.fastASet(name, type);
+                types.fastASet(runtime.newFixnum(i), type);
+            }
         }
 
         return types;
@@ -258,12 +284,10 @@ public class PostgreSQLResult extends JdbcResult {
         return resultHash;
     }
 
-    // Note: this is # of commands (insert/update/selects performed) and not number of rows.  In practice,
-    // so far users always just check this as to when it is 0 which ends up being the same as an update/insert
-    // where no rows were affected...so wrong value but the important value will be the same (I do not see
-    // how jdbc can do this).
+    // Note: This is probably not the best implementation,
+    // but it is better than always returning 0 on non-value-returning ops.
     @PG @JRubyMethod(name = {"cmdtuples", "cmd_tuples"})
     public IRubyObject cmdtuples(ThreadContext context) {
-        return values.isEmpty() ? context.runtime.newFixnum(0) : aref(context, context.runtime.newFixnum(0));
+        return cmdTuples != -1 ? context.runtime.newFixnum(cmdTuples) : values.length(context);
     }
 }

@@ -53,6 +53,7 @@ class VersionTest < Test::Unit::TestCase
     raw_connection = mock('raw_connection')
     raw_connection.stubs(:execute)
     raw_connection.stubs(:exec_params)
+    raw_connection.stubs(:decode_dates=)
 
     ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.stubs(:new_client).returns(raw_connection)
     ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.any_instance.stubs(:initialize_type_map)

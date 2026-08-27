@@ -814,7 +814,7 @@ public class RubyJdbcConnection extends RubyObject {
                         result = mapToRawResult(context, connection, resultSet, false);
                         resultSet.close();
                     } else {
-                        result = context.runtime.newFixnum(updateCount);
+                        result = mapEmptyExecuteResult(context, updateCount);
                     }
 
                     // Check to see if there is another result set
@@ -865,6 +865,10 @@ public class RubyJdbcConnection extends RubyObject {
             final Connection connection, final ResultSet resultSet) throws SQLException{
 
         return mapQueryResult(context, connection, resultSet);
+    }
+
+    protected IRubyObject mapEmptyExecuteResult(final ThreadContext context, final long updateCount) {
+        return newEmptyResult(context);
     }
 
     private static String[] createStatementPk(IRubyObject pk) {
@@ -3274,7 +3278,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @param downCase should column names only be in lower case?
      */
     @SuppressWarnings("unchecked")
-    private IRubyObject mapToRawResult(final ThreadContext context,
+    protected IRubyObject mapToRawResult(final ThreadContext context,
             final Connection connection, final ResultSet resultSet,
             final boolean downCase) throws SQLException {
 
