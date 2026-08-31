@@ -9,7 +9,7 @@ module ActiveRecord::ConnectionAdapters
       super
 
       @auto_increment = auto_increment
-      @default = nil if default =~ /NULL/
+      @default = nil if default.is_a?(String) && default.match?(/NULL/)
       @rowid = rowid
       @generated_type = generated_type
     end
