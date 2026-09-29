@@ -90,9 +90,6 @@ module ArJdbc
       "cache_size"          => 2000
     }
 
-    COLUMN_TAKES_CAST_TYPE = ConnectionAdapters::Column.instance_method(:initialize).
-      parameters.any? { |_kind, name| name == :cast_type }
-
     class StatementPool < ConnectionAdapters::StatementPool # :nodoc:
       private
       def dealloc(stmt)
@@ -475,7 +472,7 @@ module ArJdbc
       rowid = is_column_the_rowid?(field, definitions)
 
       column_args = [field["name"]]
-      column_args << lookup_cast_type(field["type"]) if COLUMN_TAKES_CAST_TYPE
+      column_args << lookup_cast_type(field["type"])
       column_args.push(
         default_value,
         type_metadata,
