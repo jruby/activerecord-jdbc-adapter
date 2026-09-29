@@ -9,19 +9,15 @@ module ArJdbc
 
       NO_BINDS = [].freeze
 
-      unless ::ActiveRecord::ConnectionAdapters::AbstractAdapter.method_defined?(:mark_transaction_written_if_write)
-        def mark_transaction_written_if_write(sql)
-          if write_query?(sql)
-            ensure_writes_are_allowed(sql)
-            mark_transaction_written
-          end
+      def mark_transaction_written_if_write(sql)
+        if write_query?(sql)
+          ensure_writes_are_allowed(sql)
+          mark_transaction_written
         end
       end
 
-      unless ::ActiveRecord::ConnectionAdapters::AbstractAdapter.method_defined?(:check_if_write_query)
-        def check_if_write_query(sql)
-          ensure_writes_are_allowed(sql) if write_query?(sql)
-        end
+      def check_if_write_query(sql)
+        ensure_writes_are_allowed(sql) if write_query?(sql)
       end
 
       def exec_insert(sql, name = nil, binds = NO_BINDS, pk = nil, sequence_name = nil, returning: nil)
