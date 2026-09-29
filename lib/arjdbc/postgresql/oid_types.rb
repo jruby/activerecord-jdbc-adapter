@@ -147,8 +147,8 @@ module ArJdbc
           m.register_type "regproc", OID::Enum.new
           # FIXME: adding this vector type leads to quoting not handlign Array data in quoting.
           #m.register_type "_int4", OID::Vector.new(",", m.lookup("int4"))
-          register_class_with_precision m, "time", Type::Time
-          register_class_with_precision m, "timestamp", OID::Timestamp
+          register_class_with_precision m, "time", Type::Time, timezone: @default_timezone
+          register_class_with_precision m, "timestamp", OID::Timestamp, timezone: @default_timezone
           register_class_with_precision m, "timestamptz", OID::TimestampWithTimeZone
 
           m.register_type "numeric" do |_, fmod, sql_type|

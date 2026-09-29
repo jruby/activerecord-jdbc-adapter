@@ -86,10 +86,16 @@ class PostgreSQLTableNameTest < Test::Unit::TestCase
     self.primary_key = :sid
   end
 
-  def test_serial_with_trigger
+  def test_serial_set_pk_with_trigger
     sn = SerialWithTrigger.create!(value: 1_234_567_890.to_s)
 
-    assert sn.reload
+    omit_unless connection.use_insert_returning?, "Non-returning inserts won't receive on-insert mutations performed by triggers" do
+      assert sn.reload
+    end
+
+    found = SerialWithTrigger.find_by!(value: 1_234_567_890.to_s)
+    assert_not_nil found.sid
+
     SerialWithTrigger.columns
   end
 end

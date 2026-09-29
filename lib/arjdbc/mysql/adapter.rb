@@ -14,6 +14,7 @@ require 'arjdbc/abstract/transaction_support'
 require "arjdbc/mysql/adapter_hash_config"
 
 require "arjdbc/abstract/relation_query_attribute_monkey_patch"
+require "arjdbc/abstract/mock_logger_jruby_compat_monkey_patch"
 
 module ActiveRecord
   module ConnectionAdapters

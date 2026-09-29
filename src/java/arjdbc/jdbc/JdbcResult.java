@@ -47,6 +47,16 @@ public class JdbcResult extends RubyObject {
         processResultSet(context, resultSet);
     }
 
+    // HACK: Needed for postgres to be able to return a sane result type instead of just a RubyFixnum
+    protected JdbcResult(ThreadContext context, RubyClass clazz, RubyJdbcConnection connection) {
+        super(context.runtime, clazz);
+
+        values = newArray(context);
+        this.connection = connection;
+        columnNames = new RubyString[0];
+        columnTypes = new int[0];
+    }
+
     /**
      * Builds a type map for creating the AR::Result, most adapters don't need it
      * @param context which thread this is running on.

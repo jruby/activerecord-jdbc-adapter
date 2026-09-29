@@ -92,6 +92,9 @@ module ArJdbc
         properties["prepareThreshold"] = 0
       end
 
+      # Match upstream default PG string type, otherwise incorrectly defaults to varchar
+      properties["stringtype"] ||= "unspecified"
+
       properties
     end
   end

@@ -63,6 +63,9 @@ ArJdbc::ConnectionMethods.module_eval do
       properties['prepareThreshold'] = 0
     end
 
+    # Match upstream default PG string type, otherwise incorrectly defaults to varchar
+    properties['stringtype'] ||= 'unspecified'
+
     jdbc_connection(config)
   end
   alias_method :jdbcpostgresql_connection, :postgresql_connection

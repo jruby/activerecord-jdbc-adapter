@@ -105,5 +105,6 @@ group :rails do
     gem 'minitest-rg', require: nil
     gem 'minitest-rails', require: nil
     gem 'benchmark-ips', require: nil
+    gem 'rdoc', '~> 7', require: false
   end
 end
