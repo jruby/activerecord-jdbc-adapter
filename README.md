@@ -28,9 +28,10 @@ Versions are targeted at certain versions of Rails and live on their own branche
 | 70.x        | 7.0.x         | 70-stable | 9.3.0     | 8        |
 | 71.x        | 7.1.x         | 71-stable | 9.4.3     | 8        |
 | 72.x        | 7.2.x         | 72-stable | 9.4.3     | 8        |
-| 80.x        | 8.0.x         | master    | 10.0.0    | 21       |
+| 80.x        | 8.0.x         | 80-stable | 10.0.0    | 21       |
+| 81.x        | 8.1.x         | master    | 10.0.0    | 21       |
 
-Note: 80.x is still under development and not supported yet.
+Note: 80.x and 81.x are still under development and not supported yet.
 
 Note that JRuby 9.1.x and JRuby 9.2.x are at end-of-life. We recommend Java 8
 at a minimum for all versions.
