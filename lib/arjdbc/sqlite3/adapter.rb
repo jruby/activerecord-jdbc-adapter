@@ -90,6 +90,9 @@ module ArJdbc
       "cache_size"          => 2000
     }
 
+    COLUMN_TAKES_CAST_TYPE = ConnectionAdapters::Column.instance_method(:initialize).
+      parameters.any? { |_kind, name| name == :cast_type }
+
     class StatementPool < ConnectionAdapters::StatementPool # :nodoc:
       private
       def dealloc(stmt)
@@ -471,12 +474,17 @@ module ArJdbc
 
       rowid = is_column_the_rowid?(field, definitions)
 
-      ActiveRecord::ConnectionAdapters::SQLite3Column.new(
-        field["name"],
+      column_args = [field["name"]]
+      column_args << lookup_cast_type(field["type"]) if COLUMN_TAKES_CAST_TYPE
+      column_args.push(
         default_value,
         type_metadata,
         field["notnull"].to_i == 0,
-        default_function,
+        default_function
+      )
+
+      ActiveRecord::ConnectionAdapters::SQLite3Column.new(
+        *column_args,
         collation: field["collation"],
         auto_increment: field["auto_increment"],
         rowid: rowid,
@@ -609,7 +617,7 @@ module ArJdbc
             column_options[:stored] = column.virtual_stored?
             column_options[:type] = column.type
           elsif column.has_default?
-            type = lookup_cast_type_from_column(column)
+            type = column.respond_to?(:fetch_cast_type) ? column.fetch_cast_type(self) : lookup_cast_type_from_column(column)
             default = type.deserialize(column.default)
             default = -> { column.default_function } if default.nil?
 
@@ -869,6 +877,10 @@ module ActiveRecord::ConnectionAdapters
 
       def jdbc_connection_class
         ::ActiveRecord::ConnectionAdapters::SQLite3JdbcConnection
+      end
+
+      def native_database_types # :nodoc:
+        ArJdbc::SQLite3::NATIVE_DATABASE_TYPES
       end
     end
 

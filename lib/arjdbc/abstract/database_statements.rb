@@ -9,7 +9,7 @@ module ArJdbc
 
       NO_BINDS = [].freeze
 
-      unless method_defined?(:mark_transaction_written_if_write)
+      unless ::ActiveRecord::ConnectionAdapters::AbstractAdapter.method_defined?(:mark_transaction_written_if_write)
         def mark_transaction_written_if_write(sql)
           if write_query?(sql)
             ensure_writes_are_allowed(sql)
@@ -18,7 +18,7 @@ module ArJdbc
         end
       end
 
-      unless method_defined?(:check_if_write_query)
+      unless ::ActiveRecord::ConnectionAdapters::AbstractAdapter.method_defined?(:check_if_write_query)
         def check_if_write_query(sql)
           ensure_writes_are_allowed(sql) if write_query?(sql)
         end
