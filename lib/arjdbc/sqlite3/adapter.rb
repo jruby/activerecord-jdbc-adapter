@@ -614,7 +614,7 @@ module ArJdbc
             column_options[:stored] = column.virtual_stored?
             column_options[:type] = column.type
           elsif column.has_default?
-            type = column.respond_to?(:fetch_cast_type) ? column.fetch_cast_type(self) : lookup_cast_type_from_column(column)
+            type = column.fetch_cast_type(self)
             default = type.deserialize(column.default)
             default = -> { column.default_function } if default.nil?
 
