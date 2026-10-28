@@ -231,21 +231,14 @@ module ArJdbc
         end
       end
 
+      # The JDBC driver returns timestamps in the session time zone set by
+      # #configure_connection, so when ActiveRecord.default_timezone (or the
+      # process zone, while :local) changes at runtime, re-run it.
       def update_typemap_for_default_timezone
-        if @default_timezone != ActiveRecord.default_timezone && @timestamp_decoder
-          decoder_class = ActiveRecord.default_timezone == :utc ?
-                            PG::TextDecoder::TimestampUtc :
-                            PG::TextDecoder::TimestampWithoutTimeZone
+        local = ActiveRecord.default_timezone == :local ? local_tz : nil
+        return if @configured_default_timezone == ActiveRecord.default_timezone && @configured_local_tz == local
 
-          @timestamp_decoder = decoder_class.new(@timestamp_decoder.to_h)
-          @connection.type_map_for_results.add_coder(@timestamp_decoder)
-
-          @default_timezone = ActiveRecord.default_timezone
-
-          # if default timezone has changed, we need to reconfigure the connection
-          # (specifically, the session time zone)
-          configure_connection
-        end
+        configure_connection if @raw_connection
       end
 
       def extract_scale(sql_type)

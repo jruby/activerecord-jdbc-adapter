@@ -69,6 +69,12 @@ module ArJdbc
     # Configures the encoding, verbosity, schema search path, and time zone of the connection.
     # This is called on `connection.connect` and should not be called manually.
     def configure_connection
+      # Record the zone state first: the statements below re-enter
+      # #internal_exec_query -> #update_typemap_for_default_timezone.
+      # (Not @default_timezone: Rails treats that as a per-connection override.)
+      @configured_default_timezone = ActiveRecord.default_timezone
+      @configured_local_tz = @configured_default_timezone == :local ? local_tz : nil
+
       #if encoding = config[:encoding]
         # The client_encoding setting is set by the driver and should not be altered.
         # If the driver detects a change it will abort the connection.
@@ -532,6 +538,13 @@ module ArJdbc
       execute(combine_multi_statements(statements), name)
     end
 
+    # ActiveRecord's query path goes through internal_exec_query, not
+    # exec_no_cache/exec_cache, so pick up default_timezone changes here.
+    def internal_exec_query(...)
+      update_typemap_for_default_timezone
+      super
+    end
+
     # from ActiveRecord::ConnectionAdapters::PostgreSQL::DatabaseStatements
     READ_QUERY = ActiveRecord::ConnectionAdapters::AbstractAdapter.build_read_query_regexp(
       :close, :declare, :fetch, :move, :set, :show
@@ -794,7 +807,8 @@ module ArJdbc
     end
 
     def local_tz
-      @local_tz ||= execute('SHOW TIME ZONE', 'SCHEMA').first["TimeZone"]
+      # not memoized: the process zone can change at runtime (ENV['TZ'] / Java default)
+      java.util.TimeZone.getDefault.getID
     end
 
     def bind_params_length
