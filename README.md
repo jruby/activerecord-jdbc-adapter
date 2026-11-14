@@ -105,6 +105,42 @@ encounter problems, try adding this to your database configuration:
 The correct timezone depends on the system setup, but the one shown is a good
 place to start and is actually the correct setting for many systems.
 
+#### PostgreSQL specific notes
+
+PostgreSQL can infer the type of a bind parameter from the SQL context around
+it. The C-ext `pg` adapter gets this for free from libpq; pgjdbc (the JDBC
+driver) declares string binds as `varchar` instead, so context-dependent
+operators fail, e.g. a jsonb containment predicate:
+
+```ruby
+Doc.where("data @> ?", json) # ERROR: operator does not exist: jsonb @> character varying
+```
+
+To get libpq-style type inference for string binds, set pgjdbc's
+`stringtype=unspecified` connection setting via `properties:`:
+
+```yml
+production:
+  adapter: postgresql
+  properties:
+    stringtype: unspecified
+```
+
+or via `pg_params:`, which is appended to the JDBC URL verbatim (with a
+`DATABASE_URL`, it needs to be URL-encoded):
+
+```yml
+  pg_params: "?stringtype=unspecified"
+# DATABASE_URL: postgres://host/db?pg_params=%3Fstringtype%3Dunspecified
+```
+
+For a one-off predicate, an explicit cast works without connection-level
+settings and is a no-op for the C-ext adapter:
+
+```ruby
+Doc.where("data @> ?::jsonb", json)
+```
+
 
 ### Standalone with ActiveRecord
 
